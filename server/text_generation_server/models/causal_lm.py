@@ -388,10 +388,12 @@ class CausalLM(Model):
             revision=revision,
             padding_side="left",
             truncation_side="left",
+            trust_remote_code=True,
         )
 
         model_kwargs = {
             "revision": revision,
+            "trust_remote_code": True,
         }
 
         world_size = int(os.getenv("WORLD_SIZE", "1"))
@@ -445,6 +447,7 @@ class CausalLM(Model):
                 model_id,
                 revision=revision,
                 torch_dtype=dtype,
+                trust_remote_code=True,
             )
             model = model.eval().to(device)
             #wrap in hpu_graph only if self.enable_hpu_graph is set
@@ -469,6 +472,7 @@ class CausalLM(Model):
         kwargs = {
             "use_cache": True,
             "return_dict": True,
+            "trust_remote_code": True,
         }
 
         if model.config.model_type == "llama":
