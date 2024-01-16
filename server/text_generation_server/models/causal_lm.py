@@ -374,7 +374,10 @@ class CausalLM(Model):
         model_id: str,
         revision: Optional[str] = None,
         dtype: Optional[torch.dtype] = None,
+        trust_remote_code: Optional[bool] = False,
     ):
+        logger.info("======== init CausalLM ========")
+        
         device = torch.device("hpu")
 
         dtype = torch.bfloat16 if dtype is None else dtype
@@ -383,17 +386,19 @@ class CausalLM(Model):
 
         adapt_transformers_to_gaudi()
 
+        logger.info("======== setup tokenizer ========")
         tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             revision=revision,
             padding_side="left",
             truncation_side="left",
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
         )
 
         model_kwargs = {
             "revision": revision,
-            "trust_remote_code": True,
+            "trust_remote_code": trust_remote_code,
+            # "low_cpu_mem_usage": True,
         }
 
         world_size = int(os.getenv("WORLD_SIZE", "1"))
@@ -402,6 +407,7 @@ class CausalLM(Model):
         self.limit_hpu_graph = os.getenv("LIMIT_HPU_GRAPH", "false").lower() == "true"
 
         if world_size > 1:
+            logger.info("======== using deepspeed ========")
             import habana_frameworks.torch.hpu as torch_hpu
 
             # Get world size, rank and local rank
@@ -415,6 +421,7 @@ class CausalLM(Model):
             logger.info(
                 "DeepSpeed is enabled. world_size {} rank {} local_rank {}".format(world_size, rank, local_rank)
             )
+            logger.info("======== setup config ========")
             config = AutoConfig.from_pretrained(model_id, **model_kwargs)
             load_to_meta = model_on_meta(config)
 
@@ -425,8 +432,11 @@ class CausalLM(Model):
             else:
                 get_repo_root(model_id, local_rank=os.getenv("LOCAL_RANK"))
                 # TODO: revisit placement on CPU when auto-injection is possible
+                logger.info("======== setup model ========")
                 with deepspeed.OnDevice(dtype=dtype, device="cpu"):
                     model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype, **model_kwargs)
+                # model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype, device_map="cpu", **model_kwargs)
+                
             model = model.eval()
 
             # Initialize the model
@@ -447,7 +457,7 @@ class CausalLM(Model):
                 model_id,
                 revision=revision,
                 torch_dtype=dtype,
-                trust_remote_code=True,
+                trust_remote_code=trust_remote_code,
             )
             model = model.eval().to(device)
             #wrap in hpu_graph only if self.enable_hpu_graph is set
@@ -464,6 +474,10 @@ class CausalLM(Model):
                 tokenizer.pad_token_id = model.config.pad_token_id
             elif model.config.eos_token_id is not None:
                 tokenizer.pad_token_id = model.config.eos_token_id
+            elif model.generation_config.pad_token_id is not None:
+                tokenizer.pad_token_id = model.generation_config.pad_token_id
+            elif model.generation_config.eos_token_id is not None:
+                tokenizer.pad_token_id = model.generation_config.eos_token_id
             elif tokenizer.eos_token_id is not None:
                 tokenizer.pad_token_id = tokenizer.eos_token_id
             else:
@@ -472,7 +486,6 @@ class CausalLM(Model):
         kwargs = {
             "use_cache": True,
             "return_dict": True,
-            "trust_remote_code": True,
         }
 
         if model.config.model_type == "llama":

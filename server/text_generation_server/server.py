@@ -115,6 +115,7 @@ def serve(
     dtype: Optional[str],
     uds_path: Path,
     sharded: bool,
+    trust_remote_code: Optional[bool] = False,
 ):
     # Remove default handler
     logger.remove()
@@ -133,6 +134,7 @@ def serve(
         revision: Optional[str],
         dtype: Optional[str] = None,
         sharded: bool = False,
+        trust_remote_code: Optional[bool] = False,
     ):
         unix_socket_template = "unix://{}-{}"
         logger.info("Server:server_inner: sharded ={}".format(sharded))
@@ -156,7 +158,7 @@ def serve(
         if revision == "None":
             revision = None
         try:
-            model = get_model(model_id, revision=revision, dtype=data_type)
+            model = get_model(model_id, revision=revision, dtype=data_type, trust_remote_code=trust_remote_code)
         except Exception:
             logger.exception("Error when initializing model")
             raise

@@ -14,7 +14,7 @@ def main(args):
         )
     )
     server.serve(
-        model_id=args.model_id, revision=args.revision, dtype=args.dtype, uds_path=args.uds_path, sharded=args.sharded
+        model_id=args.model_id, revision=args.revision, dtype=args.dtype, uds_path=args.uds_path, sharded=args.sharded, trust_remote_code=args.trust_remote_code
     )
 
 
@@ -25,5 +25,6 @@ if __name__ == "__main__":
     parser.add_argument("--sharded", type=bool)
     parser.add_argument("--dtype", type=str)
     parser.add_argument("--uds_path", type=Path)
+    parser.add_argument("--trust_remote_code", type=bool, default=True)
     args = parser.parse_args()
     main(args)
