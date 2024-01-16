@@ -532,8 +532,8 @@ fn shard_manager(
     let mut p = match Command::new("text-generation-server")
         .args(shard_args)
         .envs(envs)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        //.stdout(Stdio::piped())
+        //.stderr(Stdio::piped())
         .process_group(0)
         .spawn()
     {
@@ -553,13 +553,13 @@ fn shard_manager(
     };
 
     // Redirect STDOUT to the console
-    let shard_stdout_reader = BufReader::new(p.stdout.take().unwrap());
-    let shard_stderr_reader = BufReader::new(p.stderr.take().unwrap());
-
-    //stdout tracing thread
-    thread::spawn(move || {
-        log_lines(shard_stdout_reader.lines());
-    });
+//    let shard_stdout_reader = BufReader::new(p.stdout.take().unwrap());
+//    let shard_stderr_reader = BufReader::new(p.stderr.take().unwrap());
+//
+//    //stdout tracing thread
+//    thread::spawn(move || {
+//        log_lines(shard_stdout_reader.lines());
+//    });
 
     let mut ready = false;
     let start_time = Instant::now();
@@ -568,18 +568,18 @@ fn shard_manager(
         // Process exited
         if let Some(exit_status) = p.try_wait().unwrap() {
             // We read stderr in another thread as it seems that lines() can block in some cases
-            let (err_sender, err_receiver) = mpsc::channel();
-            thread::spawn(move || {
-                for line in shard_stderr_reader.lines().flatten() {
-                    err_sender.send(line).unwrap_or(());
-                }
-            });
-            let mut err = String::new();
-            while let Ok(line) = err_receiver.recv_timeout(Duration::from_millis(10)) {
-                err = err + "\n" + &line;
-            }
+            //let (err_sender, err_receiver) = mpsc::channel();
+            //thread::spawn(move || {
+            //    for line in shard_stderr_reader.lines().flatten() {
+            //        err_sender.send(line).unwrap_or(());
+            //    }
+            //});
+            //let mut err = String::new();
+            //while let Ok(line) = err_receiver.recv_timeout(Duration::from_millis(10)) {
+            //    err = err + "\n" + &line;
+            //}
 
-            tracing::error!("Shard complete standard error output:\n{err}");
+            //tracing::error!("Shard complete standard error output:\n{err}");
 
             if let Some(signal) = exit_status.signal() {
                 tracing::error!("Shard process was signaled to shutdown with signal {signal}");
@@ -761,10 +761,10 @@ fn download_convert_model(args: &Args, running: Arc<AtomicBool>) -> Result<(), L
         download_args.push(revision.to_string())
     }
 
-    // Trust remote code for automatic peft fusion
-    if args.trust_remote_code {
-        download_args.push("--trust-remote-code".to_string());
-    }
+    // // Trust remote code for automatic peft fusion
+    // if args.trust_remote_code {
+    //     download_args.push("--trust-remote-code".to_string());
+    // }
 
     // Copy current process env
     let mut envs: Vec<(OsString, OsString)> = env::vars_os().collect();
@@ -801,8 +801,8 @@ fn download_convert_model(args: &Args, running: Arc<AtomicBool>) -> Result<(), L
     let mut download_process = match Command::new("text-generation-server")
         .args(download_args)
         .envs(envs)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+//        .stdout(Stdio::piped())
+//        .stderr(Stdio::piped())
         .process_group(0)
         .spawn()
     {
@@ -820,12 +820,12 @@ fn download_convert_model(args: &Args, running: Arc<AtomicBool>) -> Result<(), L
     };
 
     // Redirect STDOUT to the console
-    let download_stdout = download_process.stdout.take().unwrap();
-    let stdout = BufReader::new(download_stdout);
-
-    thread::spawn(move || {
-        log_lines(stdout.lines());
-    });
+//    let download_stdout = download_process.stdout.take().unwrap();
+//    let stdout = BufReader::new(download_stdout);
+//
+//    thread::spawn(move || {
+//        log_lines(stdout.lines());
+//    });
 
     loop {
         if let Some(status) = download_process.try_wait().unwrap() {
