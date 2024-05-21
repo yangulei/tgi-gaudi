@@ -570,11 +570,13 @@ class CausalLM(Model):
             revision=revision,
             padding_side="left",
             truncation_side="left",
+            trust_remote_code=True,
         )
         make_tokenizer_optional(tokenizer)
 
         model_kwargs = {
             "revision": revision,
+            "trust_remote_code": True,
         }
 
         world_size = int(os.getenv("WORLD_SIZE", "1"))
@@ -631,8 +633,8 @@ class CausalLM(Model):
             get_repo_root(model_id)
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                revision=revision,
                 torch_dtype=dtype,
+                **model_kwargs,
             )
             model = self.prepare_model_for_quantization(model)
             model = model.eval().to(device)

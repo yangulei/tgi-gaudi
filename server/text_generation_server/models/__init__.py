@@ -20,7 +20,7 @@ def get_model(
     revision: Optional[str],
     dtype: Optional[torch.dtype] = None,
 ) -> Model:
-    config = AutoConfig.from_pretrained(model_id, revision=revision)
+    config = AutoConfig.from_pretrained(model_id, revision=revision, trust_remote_code=True)
     model_type = config.model_type
 
     if model_type == "gpt_bigcode":
@@ -29,7 +29,7 @@ def get_model(
     if model_type == "bloom":
         return BLOOM(model_id, revision, dtype)
 
-    if model_type in modeling_auto.MODEL_FOR_CAUSAL_LM_MAPPING_NAMES:
+    if "CausalLM" in config.architectures[0]:
         return CausalLM(model_id, revision, dtype)
 
     raise ValueError(f"Unsupported model type {model_type}")
